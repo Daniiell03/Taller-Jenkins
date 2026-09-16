@@ -1,0 +1,10 @@
+# Arbol de compilacion: se regenera en cada build
+build/
+
+# Binarios y objetos
+*.o
+*.tar.gz
+
+# Editores
+.vscode/
+*.swp
