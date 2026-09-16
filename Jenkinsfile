@@ -1,60 +1,106 @@
-// Jenkinsfile - Pipeline declarativo de la demostracion
+// =====================================================================
+//  Jenkinsfile - Pipeline declarativo del control de acceso
 //
-// Regla de oro: este archivo NO contiene logica de compilacion.
-// Solo orquesta: invoca objetivos del Makefile, que el estudiante
-// puede ejecutar igual en su maquina sin Jenkins.
+//  PIPELINE AS CODE: este archivo vive en el repositorio, junto al
+//  codigo fuente. No se configura nada por formulario web. Por tanto:
+//    - cada cambio del proceso de construccion queda versionado
+//    - se revisa en el mismo pull request que el codigo
+//    - el historial de Git dice quien lo cambio, cuando y por que
+//
+//  REGLA DE ORO: este archivo NO contiene logica de compilacion.
+//  Solo orquesta. Los comandos reales viven en el Makefile, de modo
+//  que el estudiante puede ejecutar lo mismo en su maquina sin Jenkins.
+// =====================================================================
 
-pipeline {
+pipeline {                       // raiz de la sintaxis declarativa
 
+    // -----------------------------------------------------------------
+    // AGENTE: donde se ejecuta el trabajo.
+    // "any" = cualquier nodo disponible. En este taller solo existe el
+    // controlador, asi que corre ahi. En produccion esto es mala
+    // practica: el build pesado debe ir a un agente dedicado
+    // (agent { label "linux-build" }).
+    // -----------------------------------------------------------------
     agent any
 
+    // -----------------------------------------------------------------
+    // OPCIONES: politicas operativas del pipeline completo.
+    // -----------------------------------------------------------------
     options {
-        timestamps()                       // marca de tiempo en cada linea
-        timeout(time: 10, unit: "MINUTES") // corta un build colgado
-        buildDiscarder(logRotator(numToKeepStr: "10"))
-        disableConcurrentBuilds()          // un build a la vez
+        timestamps()                        // hora en cada linea del log
+        timeout(time: 10, unit: "MINUTES")  // aborta un build colgado
+        buildDiscarder(logRotator(numToKeepStr: "10"))  // solo 10 builds
+        disableConcurrentBuilds()           // evita builds simultaneos
     }
 
+    // -----------------------------------------------------------------
+    // ENTORNO: variables disponibles en todas las etapas.
+    // BUILD_NUMBER lo inyecta Jenkins: el artefacto queda ligado a la
+    // ejecucion exacta que lo produjo. Eso es trazabilidad.
+    // -----------------------------------------------------------------
     environment {
-        VERSION = "0.1.${BUILD_NUMBER}"    // trazabilidad del artefacto
+        VERSION = "0.1.${BUILD_NUMBER}"
     }
 
-    stages {
+    stages {                     // secuencia ordenada de etapas
 
+        // -------------------------------------------------------------
+        // ETAPA 1 - PREPARAR
+        // Deja el espacio de trabajo limpio y deja constancia en el log
+        // de que compilador se uso. Si manana el build falla, el log
+        // dice con que herramienta se construyo.
+        // -------------------------------------------------------------
         stage("Preparar") {
-            steps {
+            steps {              // un step = una instruccion concreta
                 echo "Construyendo version ${VERSION}"
-                sh "make clean"
+                sh "make clean"          // sh = ejecuta en la shell
                 sh "gcc --version | head -1"
             }
         }
 
+        // -------------------------------------------------------------
+        // ETAPA 2 - COMPILAR  (equivale a: SOURCE CODE)
+        // El Jenkinsfile no sabe compilar: delega en el Makefile.
+        // Si esta etapa falla, el build queda ROJO (FAILURE) y nada
+        // de lo que sigue se ejecuta.
+        // -------------------------------------------------------------
         stage("Compilar") {
             steps {
                 sh "make all VERSION=${VERSION}"
             }
         }
 
+        // -------------------------------------------------------------
+        // ETAPA 3 - PROBAR  (equivale a: TESTING)
+        // catchError cambia el resultado a UNSTABLE (AMARILLO) en vez
+        // de FAILURE (ROJO). La distincion importa:
+        //   ROJO     = no compilo, el codigo esta roto
+        //   AMARILLO = compilo, pero el comportamiento no es el esperado
+        // -------------------------------------------------------------
         stage("Probar") {
             steps {
-                // catchError: una prueba fallida deja el build AMARILLO
-                // (UNSTABLE), no rojo. Distingue "fallo de codigo" de
-                // "fallo de infraestructura".
                 catchError(buildResult: "UNSTABLE", stageResult: "UNSTABLE") {
                     sh "make test VERSION=${VERSION}"
                 }
             }
-            post {
-                always {
+            post {               // post de etapa: corre al terminar ESTA etapa
+                always {         // siempre, haya pasado o fallado
+                    // Lee el JUnit XML y lo muestra en la pestana
+                    // "Test Result": nombre de cada prueba y su motivo
+                    // de fallo, sin tener que leer el log completo.
                     junit allowEmptyResults: true,
                           testResults: "build/reports/*.xml"
                 }
             }
         }
 
+        // -------------------------------------------------------------
+        // ETAPA 4 - EMPAQUETAR  (equivale a: INTEGRACION)
+        // El "when" es la politica de calidad automatizada: si las
+        // pruebas dejaron el build en UNSTABLE, esta etapa se OMITE.
+        // No se empaqueta codigo que no supero la verificacion.
+        // -------------------------------------------------------------
         stage("Empaquetar") {
-            // Solo se empaqueta si las pruebas pasaron: no se publica
-            // un artefacto que no supero la verificacion.
             when {
                 expression { currentBuild.result == null ||
                              currentBuild.result == "SUCCESS" }
@@ -64,6 +110,14 @@ pipeline {
             }
         }
 
+        // -------------------------------------------------------------
+        // ETAPA 5 - ENTREGAR  (equivale a: ENTREGA)
+        // archiveArtifacts copia el .tar.gz desde el espacio de trabajo
+        // hacia el CONTROLADOR. Por eso el artefacto sobrevive al
+        // cleanWs() del bloque post: ya fue transferido.
+        // fingerprint deja una huella para rastrear en que builds
+        // aparecio ese mismo archivo.
+        // -------------------------------------------------------------
         stage("Entregar") {
             when {
                 expression { currentBuild.result == null ||
@@ -77,11 +131,16 @@ pipeline {
 
     }
 
+    // -----------------------------------------------------------------
+    // POST GLOBAL: acciones segun el resultado final del pipeline.
+    // En un entorno real, aqui irian las notificaciones por correo
+    // o Slack al autor del commit que rompio el build.
+    // -----------------------------------------------------------------
     post {
         success   { echo "SUCCESS: artefacto ${VERSION} listo para entrega" }
         unstable  { echo "UNSTABLE: compilo, pero fallaron pruebas" }
         failure   { echo "FAILURE: revise la consola" }
-        always    { cleanWs() }
+        always    { cleanWs() }   // libera disco tras cada ejecucion
     }
 
 }
