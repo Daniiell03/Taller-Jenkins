@@ -34,6 +34,20 @@ pipeline {                       // raiz de la sintaxis declarativa
     }
 
     // -----------------------------------------------------------------
+    // -----------------------------------------------------------------
+    // DISPARADORES: cierran el ciclo de integracion continua.
+    // pollSCM consulta el repositorio cada 2 minutos y lanza una
+    // ejecucion SOLO si detecta commits nuevos.
+    //
+    // En produccion se usaria un webhook: GitHub avisa a Jenkins en el
+    // instante del push, sin consultas periodicas. Aqui no es viable
+    // porque el servidor corre en localhost y GitHub no puede
+    // alcanzarlo sin un tunel.
+    // -----------------------------------------------------------------
+    triggers {
+        pollSCM("H/2 * * * *")
+    }
+
     // ENTORNO: variables disponibles en todas las etapas.
     // BUILD_NUMBER lo inyecta Jenkins: el artefacto queda ligado a la
     // ejecucion exacta que lo produjo. Eso es trazabilidad.
