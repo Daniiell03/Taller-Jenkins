@@ -67,7 +67,7 @@ pipeline {                       // raiz de la sintaxis declarativa
         stage("Preparar") {
             steps {              // un step = una instruccion concreta
                 echo "Construyendo version ${VERSION}"
-                sh "make clean"          // sh = ejecuta en la shell
+                sh "make -C demostracion clean"          // sh = ejecuta en la shell
                 sh "gcc --version | head -1"
             }
         }
@@ -80,7 +80,7 @@ pipeline {                       // raiz de la sintaxis declarativa
         // -------------------------------------------------------------
         stage("Compilar") {
             steps {
-                sh "make all VERSION=${VERSION}"
+                sh "make -C demostracion all VERSION=${VERSION}"
             }
         }
 
@@ -94,7 +94,7 @@ pipeline {                       // raiz de la sintaxis declarativa
         stage("Probar") {
             steps {
                 catchError(buildResult: "UNSTABLE", stageResult: "UNSTABLE") {
-                    sh "make test VERSION=${VERSION}"
+                    sh "make -C demostracion test VERSION=${VERSION}"
                 }
             }
             post {               // post de etapa: corre al terminar ESTA etapa
@@ -103,7 +103,7 @@ pipeline {                       // raiz de la sintaxis declarativa
                     // "Test Result": nombre de cada prueba y su motivo
                     // de fallo, sin tener que leer el log completo.
                     junit allowEmptyResults: true,
-                          testResults: "build/reports/*.xml"
+                          testResults: "demostracion/build/reports/*.xml"
                 }
             }
         }
@@ -120,7 +120,7 @@ pipeline {                       // raiz de la sintaxis declarativa
                              currentBuild.result == "SUCCESS" }
             }
             steps {
-                sh "make package VERSION=${VERSION}"
+                sh "make -C demostracion package VERSION=${VERSION}"
             }
         }
 
@@ -138,7 +138,7 @@ pipeline {                       // raiz de la sintaxis declarativa
                              currentBuild.result == "SUCCESS" }
             }
             steps {
-                archiveArtifacts artifacts: "build/dist/*.tar.gz",
+                archiveArtifacts artifacts: "demostracion/build/dist/*.tar.gz",
                                  fingerprint: true
             }
         }
