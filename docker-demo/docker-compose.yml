@@ -1,0 +1,22 @@
+# docker-compose.yml - Un controlador de Jenkins por participante.
+#
+# jenkins_home se persiste en un volumen NOMBRADO, no en un bind mount:
+# la documentacion oficial desaconseja el bind mount por problemas de
+# permisos entre el usuario del host y el usuario jenkins del contenedor.
+
+services:
+  jenkins:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: jenkins-taller:v1
+    container_name: jenkins-taller
+    restart: unless-stopped
+    ports:
+      - "8080:8080"      # interfaz web
+      - "50000:50000"    # comunicacion con agentes
+    volumes:
+      - jenkins_home:/var/jenkins_home
+
+volumes:
+  jenkins_home:

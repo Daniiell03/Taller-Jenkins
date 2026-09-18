@@ -1,0 +1,19 @@
+# Plugins necesarios para el taller. Cada uno con su razon.
+
+# Motor de Pipeline declarativo (incluye workflow-*)
+workflow-aggregator
+
+# Clonado desde repositorios Git / GitHub
+git
+
+# Lectura de informes JUnit XML y pestana de resultados
+junit
+
+# Vista grafica de etapas del pipeline
+pipeline-stage-view
+
+# Marcas de tiempo en la salida de consola
+timestamper
+
+# Limpieza del espacio de trabajo al finalizar
+ws-cleanup
