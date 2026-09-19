@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demostración práctica — CI/CD con Jenkins · TEC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --blue:#335061; --cyan:#6FA8BF; --slate:#4A6C7D; --red:#D33833;
+  --mist:#E8F0F4; --warn:#C8922A; --warnbg:#FDF4E3;
+  --ink:#2B3338; --ink2:#5A6873; --line:#D8E0E5;
+  --bg:#FFFFFF; --panel:#F7F9FA; --code:#F4F7F8;
+  --ok:#3E7D5A; --okbg:#E8F3ED;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --blue:#8FBFD4; --cyan:#6FA8BF; --slate:#A9C4D1; --red:#E8615C;
+    --mist:#1B2C36; --warn:#D9A648; --warnbg:#2B2416;
+    --ink:#DDE5EA; --ink2:#9FAEB8; --line:#2C3A44;
+    --bg:#131A1F; --panel:#182126; --code:#1A242B;
+    --ok:#7FBF9B; --okbg:#182B22;
+  }
+}
+:root[data-theme="dark"]{
+  --blue:#8FBFD4; --cyan:#6FA8BF; --slate:#A9C4D1; --red:#E8615C;
+  --mist:#1B2C36; --warn:#D9A648; --warnbg:#2B2416;
+  --ink:#DDE5EA; --ink2:#9FAEB8; --line:#2C3A44;
+  --bg:#131A1F; --panel:#182126; --code:#1A242B;
+  --ok:#7FBF9B; --okbg:#182B22;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth; scroll-padding-top:20px}
+body{margin:0; background:var(--bg); color:var(--ink);
+  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  font-size:15px; line-height:1.62; -webkit-font-smoothing:antialiased}
+
+.shell{display:flex; max-width:1320px; margin:0 auto}
+nav{width:250px; flex:0 0 250px; padding:26px 14px 60px 20px;
+  position:sticky; top:0; align-self:flex-start; max-height:100vh;
+  overflow-y:auto; border-right:1px solid var(--line)}
+nav .navtitle{font-size:11px; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--ink2); font-weight:600; margin:0 0 12px 8px}
+nav a{display:block; padding:5px 9px; margin-bottom:1px; border-radius:5px;
+  color:var(--ink2); text-decoration:none; font-size:13.5px;
+  border-left:2px solid transparent; transition:.12s}
+nav a:hover{background:var(--panel); color:var(--ink)}
+nav a.active{color:var(--blue); font-weight:600; border-left-color:var(--red); background:var(--panel)}
+nav a.sub{padding-left:22px; font-size:13px}
+
+main{flex:1; min-width:0; padding:26px 30px 90px; max-width:980px}
+
+@media (max-width:900px){
+  .shell{flex-direction:column}
+  nav{width:auto; flex:none; position:static; max-height:none;
+      border-right:none; border-bottom:1px solid var(--line); padding:16px 18px}
+  nav a{display:inline-block; margin-right:4px; border-left:none; border-bottom:2px solid transparent}
+  nav a.active{border-left:none; border-bottom-color:var(--red)}
+  nav a.sub{display:none}
+  main{padding:20px 18px 70px}
+}
+
+.brand{padding-bottom:16px; margin-bottom:22px;
+  border-bottom:3px solid var(--red); position:relative}
+.brand::after{content:""; position:absolute; bottom:-3px; left:0;
+  width:45%; height:3px; background:var(--cyan)}
+.brand h1{font-size:26px; line-height:1.25; margin:0 0 8px; color:var(--blue); font-weight:700}
+.brand .inst{font-size:13px; color:var(--ink2); line-height:1.5}
+.brand .lead{margin-top:14px; font-size:14.5px}
+
+h2{font-size:19px; color:var(--blue); font-weight:700;
+   margin:38px 0 4px; padding-bottom:6px; border-bottom:1px solid var(--line)}
+h3{font-size:15.5px; color:var(--blue); font-weight:600; margin:22px 0 6px}
+p{margin:10px 0}
+code{font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  font-size:.885em; background:var(--code); padding:1.5px 5px;
+  border-radius:4px; border:1px solid var(--line)}
+
+.fase{display:flex; align-items:baseline; gap:14px;
+  margin:44px 0 6px; padding-bottom:8px; border-bottom:2px solid var(--red)}
+.fase .n{font-size:13px; font-weight:700; color:#fff; background:var(--red);
+  padding:3px 11px; border-radius:12px; letter-spacing:.05em; white-space:nowrap}
+.fase .t{font-size:19px; font-weight:700; color:var(--blue); flex:1}
+
+.cw{margin:14px 0; border:1px solid var(--line); border-radius:7px; overflow:hidden; background:var(--code)}
+.cbar{display:flex; align-items:center; gap:8px; padding:5px 9px;
+  background:var(--panel); border-bottom:1px solid var(--line)}
+.lang{font-family:"JetBrains Mono",monospace; font-size:10.5px;
+  color:var(--ink2); text-transform:uppercase; letter-spacing:.07em; flex:1}
+.cp{font:inherit; font-size:11.5px; font-weight:500;
+  padding:3px 10px; border-radius:5px; cursor:pointer;
+  background:var(--bg); color:var(--ink2);
+  border:1px solid var(--line); transition:.12s; white-space:nowrap}
+.cp:hover{color:var(--blue); border-color:var(--cyan)}
+.cp.ok{background:var(--okbg); color:var(--ok); border-color:var(--ok)}
+pre{margin:0; padding:12px 14px; overflow-x:auto;
+  font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  font-size:12.6px; line-height:1.58; color:var(--ink)}
+pre .cm{color:var(--ink2); font-style:italic}
+pre .ou{color:var(--slate)}
+pre .hl{background:rgba(211,56,51,.13); border-radius:2px}
+
+.box{margin:16px 0; border-radius:7px; padding:12px 15px;
+  border:1px solid; border-left-width:4px; font-size:14px}
+.box .bt{font-size:11px; font-weight:700; letter-spacing:.08em;
+  text-transform:uppercase; margin-bottom:6px}
+.box p:first-of-type{margin-top:0}
+.box p:last-child{margin-bottom:0}
+.nota{background:var(--mist); border-color:var(--cyan)}
+.nota .bt{color:var(--blue)}
+.clave{background:rgba(211,56,51,.06); border-color:var(--red)}
+.clave .bt{color:var(--red)}
+.adv{background:var(--warnbg); border-color:var(--warn)}
+.adv .bt{color:var(--warn)}
+
+.tw{overflow-x:auto; margin:14px 0}
+table{border-collapse:collapse; width:100%; font-size:13.5px; min-width:440px}
+th{text-align:left; padding:8px 11px; border-bottom:2px solid var(--blue);
+  color:var(--blue); font-weight:600; font-size:12.5px}
+td{padding:8px 11px; border-bottom:1px solid var(--line); vertical-align:top}
+tr:last-child td{border-bottom:none}
+
+.estado{display:inline-block; width:11px; height:11px; border-radius:50%;
+  margin-right:7px; vertical-align:middle}
+.e-verde{background:#3E7D5A}
+.e-amarillo{background:#D9A648}
+.e-rojo{background:var(--red)}
+
+#toast{position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(14px);
+  background:var(--blue); color:#fff; padding:8px 18px; border-radius:20px;
+  font-size:13px; opacity:0; pointer-events:none; transition:.22s; z-index:99}
+#toast.on{opacity:1; transform:translateX(-50%) translateY(0)}
+
+#theme{position:fixed; top:14px; right:16px; z-index:50;
+  background:var(--panel); border:1px solid var(--line); color:var(--ink2);
+  border-radius:16px; padding:5px 12px; font:inherit; font-size:12px; cursor:pointer}
+#theme:hover{color:var(--blue); border-color:var(--cyan)}
+
+footer{margin-top:50px; padding-top:18px; border-top:1px solid var(--line);
+  font-size:12.5px; color:var(--ink2)}
+</style>
+</head>
+<body>
+
+<button id="theme">Tema</button>
+
+<div class="shell">
+
+<nav>
+  <p class="navtitle">Contenido</p>
+  <a href="#inicio">Objetivo y arquitectura</a>
+  <a href="#req">Requisitos previos</a>
+  <a href="#f1" class="sub">1 · Código fuente</a>
+  <a href="#f2" class="sub">2 · Pruebas unitarias</a>
+  <a href="#f3" class="sub">3 · El Makefile</a>
+  <a href="#f4" class="sub">4 · Infraestructura Docker</a>
+  <a href="#f5" class="sub">5 · El pipeline</a>
+  <a href="#f6" class="sub">6 · Ejecución y evidencias</a>
+  <a href="#problemas">Problemas encontrados</a>
+  <a href="#demostrado">Qué queda demostrado</a>
+</nav>
+
+<main>
+
+<div class="brand" id="inicio">
+  <h1>Demostración práctica — Pipeline de integración continua para software embebido</h1>
+  <p class="inst">
+    Tecnológico de Costa Rica · Escuela de Ingeniería Electrónica · Taller de Sistemas Embebidos<br>
+    Docker <strong>+</strong> GitHub <strong>+</strong> Jenkins
+  </p>
+  <p class="lead">
+    Registro completo y verificado de la demostración. Cada paso incluye el comando exacto
+    ejecutado, la salida obtenida y un punto de verificación. Los problemas documentados al
+    final son fallos reales encontrados durante la construcción, no escenarios hipotéticos.
+  </p>
+</div>
+
+<h2>Objetivo y arquitectura</h2>
+
+<div class="tw"><table>
+<tr><th style="width:110px">Herramienta</th><th style="width:250px">Rol</th><th>Qué demuestra</th></tr>
+<tr><td><strong>Docker</strong></td>
+    <td>Aloja el controlador de Jenkins con el entorno de compilación incluido</td>
+    <td>La imagen oficial no trae compilador: el entorno de construcción debe empaquetarse</td></tr>
+<tr><td><strong>GitHub</strong></td>
+    <td>Repositorio remoto del código y del pipeline</td>
+    <td><em>Pipeline as Code</em>: el proceso se versiona junto al código</td></tr>
+<tr><td><strong>Jenkins</strong></td>
+    <td>Orquesta la ejecución de las etapas</td>
+    <td>Construir, probar y entregar con política de calidad aplicada sin intervención humana</td></tr>
+</table></div>
+
+<h3>El caso de estudio</h3>
+<p>
+Una máquina de estados finitos que modela una puerta con control de acceso. Cuatro estados
+y cuatro eventos:
+</p>
+
+<div class="tw"><table>
+<tr><th style="width:160px">Estado</th><th>Significado</th></tr>
+<tr><td><code>CERRADO</code></td><td>Reposo, puerta asegurada</td></tr>
+<tr><td><code>AUTORIZANDO</code></td><td>Credencial recibida, validando</td></tr>
+<tr><td><code>ABIERTO</code></td><td>Acceso concedido</td></tr>
+<tr><td><code>BLOQUEADO</code></td><td>Estado terminal tras tres fallos consecutivos</td></tr>
+</table></div>
+
+<p>
+El módulo es puro: no contiene hardware ni entrada/salida, de modo que sus pruebas pueden
+ejecutarse dentro del contenedor de Jenkins sin necesidad de una tarjeta física.
+</p>
+
+<div class="box clave">
+  <div class="bt">Por qué este ejemplo</div>
+  <p>
+    El umbral de bloqueo está definido como una constante. Cambiar ese valor de
+    <code>3</code> a <code>2</code> produce código que <strong>compila sin errores</strong>
+    pero cuyo comportamiento ya no es el especificado.
+  </p>
+  <p>
+    Esa distinción entre «no compila» y «compila pero está mal» es el eje de la
+    demostración.
+  </p>
+</div>
+
+<h3>Estructura del repositorio</h3>
+
+<div class="cw"><div class="cbar"><span class="lang">estructura</span></div>
+<pre>demostracion/
+|- src/
+|  |- puerta.h             <span class="cm">(interfaz y constantes)</span>
+|  |- puerta.c             <span class="cm">(implementacion de la FSM)</span>
+|  |- main.c               <span class="cm">(ejecutable de demostracion)</span>
+|- tests/
+|  |- minitest.h           <span class="cm">(micro marco que emite JUnit XML)</span>
+|  |- test_puerta.c        <span class="cm">(6 pruebas unitarias)</span>
+|- docker/
+|  |- Dockerfile           <span class="cm">(Jenkins + entorno de compilacion)</span>
+|  |- docker-compose.yml   <span class="cm">(servicio y volumen persistente)</span>
+|  |- plugins.txt          <span class="cm">(complementos precargados)</span>
+|- Makefile                <span class="cm">(objetivos de construccion)</span>
+|- Jenkinsfile             <span class="cm">(definicion del pipeline)</span></pre></div>
+
+<p>
+Esa organización refleja las cuatro etapas del proceso: código fuente, pruebas,
+integración y entrega.
+</p>
+
+<!-- ============ REQUISITOS ============ -->
+<h2 id="req">Requisitos previos</h2>
+
+<div class="tw"><table>
+<tr><th style="width:190px">Componente</th><th style="width:140px">Versión usada</th><th>Verificación</th></tr>
+<tr><td>WSL2 con Ubuntu</td><td>24.04 LTS</td><td><code>lsb_release -a</code></td></tr>
+<tr><td>Docker Engine</td><td>29.8.0</td><td><code>docker --version</code></td></tr>
+<tr><td>Docker Compose</td><td>v2</td><td><code>docker compose version</code></td></tr>
+<tr><td>Git</td><td>2.43.0</td><td><code>git --version</code></td></tr>
+<tr><td>Cuenta de GitHub</td><td>—</td><td>Token de acceso personal con alcance <code>repo</code></td></tr>
+</table></div>
+
+<div class="box adv">
+  <div class="bt">Advertencia — sobre el token de GitHub</div>
+  <p>
+    Desde 2021 GitHub no acepta contraseñas para operaciones de Git. Se requiere un token
+    de acceso personal con el alcance <code>repo</code> habilitado. Un token
+    <em>fine-grained</em> sin permiso de escritura produce un error 403 aunque la
+    autenticación sea correcta.
+  </p>
+  <p>
+    El token equivale a una contraseña: no debe escribirse en archivos del repositorio ni
+    en documentación. Si se expone, revocarlo de inmediato — borrarlo de un archivo no lo
+    elimina del historial de Git.
+  </p>
+</div>
+
+<!-- ============ FASE 1 ============ -->
+<div class="fase" id="f1">
+  <span class="n">FASE 1</span>
+  <span class="t">Código fuente</span>
+</div>
+
+<h3>Interfaz del módulo</h3>
+
+<div class="cw"><div class="cbar"><span class="lang">src/puerta.h</span>
+<button class="cp" data-i="0">Copiar</button></div>
+<pre>#ifndef PUERTA_H
+#define PUERTA_H
+
+#include &lt;stdint.h&gt;
+
+#define MAX_INTENTOS 3u   <span class="cm">/* bloqueo tras este numero de fallos */</span>
+
+typedef enum {
+    EST_CERRADO = 0,
+    EST_AUTORIZANDO,
+    EST_ABIERTO,
+    EST_BLOQUEADO
+} estado_t;
+
+typedef enum {
+    EV_CREDENCIAL = 0,
+    EV_OK,
+    EV_FALLO,
+    EV_TIEMPO
+} evento_t;
+
+typedef struct {
+    estado_t estado;
+    uint8_t  intentos;
+} puerta_t;
+
+void        puerta_init(puerta_t *p);
+estado_t    puerta_evento(puerta_t *p, evento_t ev);
+const char *puerta_nombre(estado_t e);
+
+#endif <span class="cm">/* PUERTA_H */</span></pre></div>
+
+<h3>Implementación de la máquina de estados</h3>
+
+<div class="cw"><div class="cbar"><span class="lang">src/puerta.c</span>
+<button class="cp" data-i="1">Copiar</button></div>
+<pre>#include "puerta.h"
+#include &lt;stddef.h&gt;
+
+void puerta_init(puerta_t *p)
+{
+    if (p == NULL) {
+        return;
+    }
+    p-&gt;estado   = EST_CERRADO;
+    p-&gt;intentos = 0u;
+}
+
+estado_t puerta_evento(puerta_t *p, evento_t ev)
+{
+    if (p == NULL) {
+        return EST_BLOQUEADO;   <span class="cm">/* falla segura */</span>
+    }
+
+    switch (p-&gt;estado) {
+
+    case EST_CERRADO:
+        if (ev == EV_CREDENCIAL) {
+            p-&gt;estado = EST_AUTORIZANDO;
+        }
+        break;
+
+    case EST_AUTORIZANDO:
+        if (ev == EV_OK) {
+            p-&gt;estado   = EST_ABIERTO;
+            p-&gt;intentos = 0u;           <span class="cm">/* exito: reinicia contador */</span>
+        } else if (ev == EV_FALLO) {
+            p-&gt;intentos++;
+            p-&gt;estado = (p-&gt;intentos &gt;= MAX_INTENTOS)
+                      ? EST_BLOQUEADO
+                      : EST_CERRADO;
+        }
+        break;
+
+    case EST_ABIERTO:
+        if (ev == EV_TIEMPO) {
+            p-&gt;estado = EST_CERRADO;    <span class="cm">/* cierre automatico */</span>
+        }
+        break;
+
+    case EST_BLOQUEADO:
+    default:
+        <span class="cm">/* Estado terminal: solo se sale reinicializando. */</span>
+        break;
+    }
+
+    return p-&gt;estado;
+}</pre></div>
+
+<div class="box nota">
+  <div class="bt">Nota — dos decisiones de diseño con intención didáctica</div>
+  <p>
+    Un puntero nulo devuelve <code>BLOQUEADO</code> en lugar de abrir la puerta: falla
+    segura.
+  </p>
+  <p>
+    Un acceso exitoso reinicia el contador de intentos, de modo que tres fallos separados
+    por un acierto no bloquean el sistema.
+  </p>
+</div>
+
+<div class="box nota">
+  <div class="bt">Punto de verificación</div>
+  <p>El módulo debe compilar sin advertencias bajo <code>-Wall -Wextra -Werror</code>:</p>
+</div>
+
+<div class="cw"><div class="cbar"><span class="lang">bash</span>
+<button class="cp" data-i="2">Copiar</button></div>
+<pre>gcc -std=c11 -Wall -Wextra -Werror -Isrc -c src/puerta.c -o /tmp/p.o</pre></div>
+
+<p>
+El uso de <code>-Werror</code> convierte cualquier advertencia en error. Es la misma
+política que aplicará el pipeline.
+</p>
+
+<!-- ============ FASE 2 ============ -->
+<div class="fase" id="f2">
+  <span class="n">FASE 2</span>
+  <span class="t">Pruebas unitarias</span>
+</div>
+
+<p>
+Las pruebas se apoyan en un micro marco propio que emite un informe en formato JUnit XML.
+Ese formato es el que Jenkins lee para poblar la pestaña de resultados, mostrando cada
+prueba por nombre en lugar de obligar a leer el registro completo.
+</p>
+
+<div class="tw"><table>
+<tr><th style="width:290px">Prueba</th><th>Qué verifica</th></tr>
+<tr><td><code>test_init_arranca_cerrado</code></td><td>Estado inicial y contador en cero</td></tr>
+<tr><td><code>test_credencial_pasa_a_autorizando</code></td><td>Transición válida desde reposo</td></tr>
+<tr><td><code>test_autorizacion_correcta_abre</code></td><td>Camino feliz completo</td></tr>
+<tr><td><code>test_cierre_por_tiempo</code></td><td>Cierre automático tras apertura</td></tr>
+<tr><td><code>test_bloqueo_tras_tres_fallos</code></td><td><strong>Umbral de bloqueo — esta es la que se romperá</strong></td></tr>
+<tr><td><code>test_bloqueado_es_terminal</code></td><td>Ningún evento saca del estado terminal</td></tr>
+</table></div>
+
+<h3>La prueba clave del umbral</h3>
+
+<div class="cw"><div class="cbar"><span class="lang">tests/test_puerta.c</span>
+<button class="cp" data-i="3">Copiar</button></div>
+<pre>static void test_bloqueo_tras_tres_fallos(void)
+{
+    puerta_t p;
+    unsigned i;
+    puerta_init(&amp;p);
+
+    <span class="cm">/* Dos fallos: vuelve a CERRADO, aun sin bloquear. */</span>
+    for (i = 0u; i &lt; 2u; ++i) {
+        puerta_evento(&amp;p, EV_CREDENCIAL);
+        MT_ASSERT_EQ(puerta_evento(&amp;p, EV_FALLO), EST_CERRADO);
+    }
+
+    <span class="cm">/* Tercer fallo: bloqueo. */</span>
+    puerta_evento(&amp;p, EV_CREDENCIAL);
+    MT_ASSERT_EQ(puerta_evento(&amp;p, EV_FALLO), EST_BLOQUEADO);
+}</pre></div>
+
+<div class="cw"><div class="cbar"><span class="lang">bash · punto de verificación</span>
+<button class="cp" data-i="4">Copiar</button>
+<button class="cp clean" data-i="4">Solo comandos</button></div>
+<pre>make test
+<span class="ou">&gt; [  ok  ] test_init_arranca_cerrado</span>
+<span class="ou">&gt; [  ok  ] test_credencial_pasa_a_autorizando</span>
+<span class="ou">&gt; [  ok  ] test_autorizacion_correcta_abre</span>
+<span class="ou">&gt; [  ok  ] test_cierre_por_tiempo</span>
+<span class="ou">&gt; [  ok  ] test_bloqueo_tras_tres_fallos</span>
+<span class="ou">&gt; [  ok  ] test_bloqueado_es_terminal</span>
+<span class="ou">&gt;</span>
+<span class="ou">&gt; minitest: informe JUnit en build/reports/puerta.xml</span>
+<span class="ou">&gt; Resumen: 6 pruebas, 0 fallas</span></pre></div>
+
+<!-- ============ FASE 3 ============ -->
+<div class="fase" id="f3">
+  <span class="n">FASE 3</span>
+  <span class="t">El Makefile</span>
+</div>
+
+<div class="cw"><div class="cbar"><span class="lang">Makefile · extracto</span>
+<button class="cp" data-i="5">Copiar</button></div>
+<pre>APP      := control-acceso
+VERSION  ?= 0.1.0
+CC       ?= gcc
+CFLAGS   := -std=c11 -Wall -Wextra -Werror -O2 -Isrc \
+            -DAPP_VERSION=\"$(VERSION)\"
+
+all:     <span class="cm"># compila el ejecutable</span>
+test:    <span class="cm"># compila y ejecuta pruebas; genera JUnit XML</span>
+package: <span class="cm"># empaqueta el binario en un .tar.gz versionado</span>
+clean:   <span class="cm"># borra todo lo generado</span>
+help:    <span class="cm"># lista los objetivos disponibles</span></pre></div>
+
+<div class="box clave">
+  <div class="bt">Regla de oro</div>
+  <p>
+    El pipeline no contiene lógica de compilación: únicamente invoca objetivos de este
+    Makefile. La consecuencia práctica es que cualquier participante puede ejecutar
+    exactamente lo mismo en su máquina sin instalar Jenkins, y que un fallo del build se
+    reproduce localmente sin depender del servidor.
+  </p>
+  <p>
+    La variable <code>VERSION</code> usa <code>?=</code> para que el pipeline pueda
+    sobrescribirla con el número de ejecución, ligando cada artefacto al build que lo
+    produjo.
+  </p>
+</div>
+
+<!-- ============ FASE 4 ============ -->
+<div class="fase" id="f4">
+  <span class="n">FASE 4</span>
+  <span class="t">Infraestructura Docker</span>
+</div>
+
+<h3>Dockerfile</h3>
+
+<div class="cw"><div class="cbar"><span class="lang">docker/Dockerfile</span>
+<button class="cp" data-i="6">Copiar</button></div>
+<pre><span class="cm"># La imagen oficial de Jenkins trae Java y el servidor, pero NO trae</span>
+<span class="cm"># compilador. Si el pipeline va a ejecutar "make", el entorno de</span>
+<span class="cm"># construccion tiene que existir en la imagen.</span>
+
+FROM jenkins/jenkins:lts-jdk21
+
+USER root
+RUN apt-get update \
+ &amp;&amp; apt-get install -y --no-install-recommends \
+      build-essential make file cppcheck \
+ &amp;&amp; rm -rf /var/lib/apt/lists/*
+
+ENV JAVA_OPTS="-Duser.timezone=America/Costa_Rica"
+
+COPY plugins.txt /usr/share/jenkins/ref/plugins.txt
+RUN jenkins-plugin-cli --plugin-file /usr/share/jenkins/ref/plugins.txt
+
+USER jenkins</pre></div>
+
+<h3>docker-compose.yml</h3>
+
+<div class="cw"><div class="cbar"><span class="lang">docker/docker-compose.yml</span>
+<button class="cp" data-i="7">Copiar</button></div>
+<pre>services:
+  jenkins:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: jenkins-taller:v1
+    container_name: jenkins-taller
+    restart: unless-stopped
+    ports:
+      - "8080:8080"      <span class="cm"># interfaz web</span>
+      - "50000:50000"    <span class="cm"># comunicacion con agentes</span>
+    volumes:
+      - jenkins_home:/var/jenkins_home
+
+volumes:
+  jenkins_home:</pre></div>
+
+<div class="box nota">
+  <div class="bt">Nota — volumen nombrado, no <em>bind mount</em></div>
+  <p>
+    La documentación oficial desaconseja montar una carpeta del sistema anfitrión sobre
+    <code>/var/jenkins_home</code>, porque el usuario <code>jenkins</code> dentro del
+    contenedor opera con un identificador específico y esto produce conflictos de permisos.
+    El directorio debe tratarse con el mismo cuidado que la base de datos de un sistema.
+  </p>
+</div>
+
+<h3>Construcción y arranque</h3>
+
+<div class="cw"><div class="cbar"><span class="lang">bash</span>
+<button class="cp" data-i="8">Copiar</button>
+<button class="cp clean" data-i="8">Solo comandos</button></div>
+<pre>cd demostracion/docker
+DOCKER_BUILDKIT=0 docker build -t jenkins-taller:v1 .
+docker compose up -d --no-build
+docker compose ps
+<span class="ou">&gt; NAME             IMAGE               STATUS         PORTS</span>
+<span class="ou">&gt; jenkins-taller   jenkins-taller:v1   Up 2 seconds   0.0.0.0:8080-&gt;8080/tcp</span></pre></div>
+
+<div class="cw"><div class="cbar"><span class="lang">bash · punto de verificación</span>
+<button class="cp" data-i="9">Copiar</button>
+<button class="cp clean" data-i="9">Solo comandos</button></div>
+<pre>docker exec jenkins-taller bash -c \
+  "gcc --version | head -1; make --version | head -1"
+<span class="ou">&gt; gcc (Debian 14.2.0-19) 14.2.0</span>
+<span class="ou">&gt; GNU Make 4.4.1</span></pre></div>
+
+<p>
+Esta verificación es la evidencia de que el pipeline podrá ejecutar <code>make</code> sin
+instalar nada en tiempo de ejecución.
+</p>
+
+<h3>Clave inicial y asistente</h3>
+
+<div class="cw"><div class="cbar"><span class="lang">bash</span>
+<button class="cp" data-i="10">Copiar</button></div>
+<pre>docker exec jenkins-taller \
+    cat /var/jenkins_home/secrets/initialAdminPassword</pre></div>
+
+<p>
+Con esa clave se accede a <code>http://localhost:8080</code>. En la pantalla de
+complementos se elige <em>Select plugins to install</em> y luego <strong>None</strong>, ya
+que los necesarios vienen precargados desde el <code>Dockerfile</code>. Esto elimina la
+dependencia de la red durante la puesta en marcha.
+</p>
+
+<!-- ============ FASE 5 ============ -->
+<div class="fase" id="f5">
+  <span class="n">FASE 5</span>
+  <span class="t">El pipeline</span>
+</div>
+
+<div class="cw"><div class="cbar"><span class="lang">Jenkinsfile</span>
+<button class="cp" data-i="11">Copiar</button></div>
+<pre>pipeline {                       <span class="cm">// raiz de la sintaxis declarativa</span>
+
+    <span class="cm">// AGENTE: donde se ejecuta el trabajo. "any" = cualquier nodo.</span>
+    <span class="cm">// En produccion esto es mala practica: el build pesado debe ir</span>
+    <span class="cm">// a un agente dedicado, no al controlador.</span>
+    agent any
+
+    <span class="cm">// OPCIONES: politicas operativas del pipeline completo.</span>
+    options {
+        timestamps()                        <span class="cm">// hora en cada linea</span>
+        timeout(time: 10, unit: "MINUTES")  <span class="cm">// aborta build colgado</span>
+        buildDiscarder(logRotator(numToKeepStr: "10"))
+        disableConcurrentBuilds()
+    }
+
+    <span class="cm">// DISPARADORES: cierran el ciclo de integracion continua.</span>
+    <span class="cm">// pollSCM consulta el repositorio cada 2 minutos y lanza una</span>
+    <span class="cm">// ejecucion SOLO si detecta commits nuevos.</span>
+    <span class="cm">//</span>
+    <span class="cm">// La "H" reparte la carga: con "*/2" todos los trabajos</span>
+    <span class="cm">// consultarian en el mismo instante; con "H" cada uno recibe</span>
+    <span class="cm">// un desfase distinto.</span>
+    <span class="cm">//</span>
+    <span class="cm">// En produccion se usaria un webhook: GitHub avisa a Jenkins en</span>
+    <span class="cm">// el momento del push, sin consultas periodicas.</span>
+    triggers {
+        pollSCM("H/2 * * * *")
+    }
+
+    <span class="cm">// ENTORNO: BUILD_NUMBER lo inyecta Jenkins. El artefacto queda</span>
+    <span class="cm">// ligado a la ejecucion exacta que lo produjo: trazabilidad.</span>
+    environment {
+        VERSION = "0.1.${BUILD_NUMBER}"
+    }
+
+    stages {
+
+        <span class="cm">// ETAPA 1: deja constancia de que compilador se uso.</span>
+        stage("Preparar") {
+            steps {
+                echo "Construyendo version ${VERSION}"
+                sh "make clean"
+                sh "gcc --version | head -1"
+            }
+        }
+
+        <span class="cm">// ETAPA 2 (SOURCE CODE): delega en el Makefile.</span>
+        <span class="cm">// Si falla, el build queda ROJO y nada mas se ejecuta.</span>
+        stage("Compilar") {
+            steps {
+                sh "make all VERSION=${VERSION}"
+            }
+        }
+
+        <span class="cm">// ETAPA 3 (TESTING): catchError cambia el resultado a</span>
+        <span class="cm">// UNSTABLE (AMARILLO) en vez de FAILURE (ROJO).</span>
+        <span class="cm">//   ROJO     = no compilo, el codigo esta roto</span>
+        <span class="cm">//   AMARILLO = compilo, pero el comportamiento no es el esperado</span>
+        stage("Probar") {
+            steps {
+                catchError(buildResult: "UNSTABLE",
+                           stageResult: "UNSTABLE") {
+                    sh "make test VERSION=${VERSION}"
+                }
+            }
+            post {
+                always {
+                    <span class="cm">// Lee el JUnit XML y lo muestra en la pestana</span>
+                    <span class="cm">// "Test Result": cada prueba por nombre.</span>
+                    junit allowEmptyResults: true,
+                          testResults: "build/reports/*.xml"
+                }
+            }
+        }
+
+        <span class="cm">// ETAPA 4 (INTEGRACION): el "when" es la politica de calidad</span>
+        <span class="cm">// automatizada. Si las pruebas dejaron el build en UNSTABLE,</span>
+        <span class="cm">// esta etapa se OMITE.</span>
+        stage("Empaquetar") {
+            when {
+                expression { currentBuild.result == null ||
+                             currentBuild.result == "SUCCESS" }
+            }
+            steps {
+                sh "make package VERSION=${VERSION}"
+            }
+        }
+
+        <span class="cm">// ETAPA 5 (ENTREGA): archiveArtifacts copia el .tar.gz hacia</span>
+        <span class="cm">// el CONTROLADOR. Por eso sobrevive al cleanWs posterior.</span>
+        stage("Entregar") {
+            when {
+                expression { currentBuild.result == null ||
+                             currentBuild.result == "SUCCESS" }
+            }
+            steps {
+                archiveArtifacts artifacts: "build/dist/*.tar.gz",
+                                 fingerprint: true
+            }
+        }
+    }
+
+    <span class="cm">// POST GLOBAL: acciones segun el resultado final.</span>
+    post {
+        success  { echo "SUCCESS: artefacto ${VERSION} listo" }
+        unstable { echo "UNSTABLE: compilo, pero fallaron pruebas" }
+        failure  { echo "FAILURE: revise la consola" }
+        always   { cleanWs() }
+    }
+}</pre></div>
+
+<div class="box adv">
+  <div class="bt">Advertencia — el disparador no se activa solo</div>
+  <p>
+    Jenkins debe leer el <code>Jenkinsfile</code> al menos una vez para enterarse de que
+    existe la directiva <code>triggers</code>. Por eso, tras publicar el cambio es
+    necesaria <strong>una</strong> ejecución manual; a partir de ahí el sondeo opera sin
+    intervención.
+  </p>
+</div>
+
+<h3>Las siete directivas y lo que enseñan</h3>
+
+<div class="tw"><table>
+<tr><th style="width:170px">Directiva</th><th>Concepto que evidencia</th></tr>
+<tr><td><code>agent</code></td><td>Dónde se ejecuta el trabajo; permite señalar la mala práctica de compilar en el controlador</td></tr>
+<tr><td><code>options</code></td><td>Políticas operativas: tiempo límite, rotación de registros, exclusión mutua</td></tr>
+<tr><td><code>triggers</code></td><td>Cierre del ciclo: la construcción se lanza sin intervención humana</td></tr>
+<tr><td><code>environment</code></td><td>Trazabilidad del artefacto mediante el número de ejecución</td></tr>
+<tr><td><code>catchError</code></td><td>Distinción entre fallo de compilación y fallo de comportamiento</td></tr>
+<tr><td><code>when</code></td><td>Política de calidad aplicada automáticamente, sin decisión humana</td></tr>
+<tr><td><code>post</code></td><td>Acciones condicionadas al resultado; punto natural de notificación</td></tr>
+</table></div>
+
+<h3>Configuración del trabajo en Jenkins</h3>
+
+<div class="tw"><table>
+<tr><th style="width:190px">Campo</th><th>Valor</th></tr>
+<tr><td>Nombre</td><td><code>control-acceso-ci</code></td></tr>
+<tr><td>Tipo</td><td>Pipeline</td></tr>
+<tr><td>Definition</td><td><em>Pipeline script from SCM</em></td></tr>
+<tr><td>SCM</td><td>Git</td></tr>
+<tr><td>Repository URL</td><td><code>https://github.com/Daniiell03/Taller-Jenkins.git</code></td></tr>
+<tr><td>Branch Specifier</td><td><code>*/main</code></td></tr>
+<tr><td>Script Path</td><td><code>demostracion/Jenkinsfile</code></td></tr>
+</table></div>
+
+<div class="box clave">
+  <div class="bt">Esto es Pipeline as Code</div>
+  <p>
+    La elección de <em>Pipeline script from SCM</em> en lugar de pegar el script en el
+    formulario web es lo que materializa el concepto: cualquier modificación del proceso de
+    construcción llega por un <em>commit</em>, queda revisada y es reversible.
+  </p>
+</div>
+
+<!-- ============ FASE 6 ============ -->
+<div class="fase" id="f6">
+  <span class="n">FASE 6</span>
+  <span class="t">Ejecución y evidencias</span>
+</div>
+
+<h3><span class="estado e-verde"></span>Ejecución #1 — camino feliz</h3>
+
+<div class="cw"><div class="cbar"><span class="lang">salida de consola</span></div>
+<pre><span class="ou">23:04:36  Construyendo version 0.1.1</span>
+<span class="ou">23:04:37  + make clean</span>
+<span class="ou">23:04:38  OK: binario en build/bin/control-acceso (version 0.1.1)</span>
+<span class="ou">23:04:40  [  ok  ] test_init_arranca_cerrado</span>
+<span class="ou">23:04:40  [  ok  ] test_bloqueo_tras_tres_fallos</span>
+<span class="ou">23:04:40  Resumen: 6 pruebas, 0 fallas</span>
+<span class="ou">23:04:40  OK: artefacto en build/dist/control-acceso-0.1.1.tar.gz</span>
+<span class="ou">23:04:41  Archiving artifacts</span>
+<span class="ou">23:04:42  SUCCESS: artefacto 0.1.1 listo para entrega</span>
+<span class="ou">Finished: SUCCESS</span></pre></div>
+
+<div class="box nota">
+  <div class="bt">Cuatro evidencias a mostrar en pantalla</div>
+  <p>
+    1. Indicador azul o verde en el historial de ejecuciones.<br>
+    2. <em>Stage View</em> con las cinco etapas en verde.<br>
+    3. Pestaña <em>Test Result</em> con las seis pruebas por nombre.<br>
+    4. <em>Build Artifacts</em> con el paquete descargable.
+  </p>
+</div>
+
+<h3><span class="estado e-amarillo"></span>Ejecución #2 — el fallo provocado</h3>
+
+<p>El cambio consiste en modificar un único carácter en <code>src/puerta.h</code>:</p>
+
+<div class="cw"><div class="cbar"><span class="lang">diff</span></div>
+<pre>-#define MAX_INTENTOS 3u
++#define MAX_INTENTOS <span class="hl">2u</span></pre></div>
+
+<div class="cw"><div class="cbar"><span class="lang">salida de consola</span></div>
+<pre><span class="ou">23:25:39  OK: binario en build/bin/control-acceso (version 0.1.2)</span>
+<span class="ou">23:25:40  [  ok  ] test_cierre_por_tiempo</span>
+<span class="ou">23:25:40  <span class="hl">[ FALLA ] test_bloqueo_tras_tres_fallos</span></span>
+<span class="ou">23:25:40  Resumen: 6 pruebas, 1 fallas</span>
+<span class="ou">23:25:40  <span class="hl">Setting overall build result to UNSTABLE</span></span>
+<span class="ou">          <span class="hl">Stage "Empaquetar" skipped due to when conditional</span></span>
+<span class="ou">          <span class="hl">Stage "Entregar"  skipped due to when conditional</span></span>
+<span class="ou">23:25:42  UNSTABLE: compilo, pero fallaron pruebas</span>
+<span class="ou">Finished: UNSTABLE</span></pre></div>
+
+<div class="box clave">
+  <div class="bt">Este es el momento central de la demostración</div>
+  <p>
+    La secuencia del registro cuenta la historia completa: el código <em>compiló sin
+    errores</em>, pero una prueba detectó que el comportamiento ya no era el especificado.
+    El resultado fue amarillo y no rojo, y las etapas de empaquetado y entrega
+    <strong>se omitieron automáticamente</strong>.
+  </p>
+  <p>
+    Nadie tomó esa decisión: la tomó la condición <code>when</code>. El artefacto
+    <code>0.1.2</code> nunca llegó a existir, y el último paquete disponible siguió siendo
+    el <code>0.1.1</code> de la ejecución anterior.
+  </p>
+</div>
+
+<h3><span class="estado e-verde"></span>Ejecución #3 — confirmación</h3>
+
+<p>
+Tras revertir el cambio, la ejecución #3 vuelve a verde y produce
+<code>control-acceso-0.1.3.tar.gz</code>. El ciclo completo queda demostrado: verde,
+amarillo, verde.
+</p>
+
+<div class="box nota">
+  <div class="bt">Nota — un detalle que suele confundir</div>
+  <p>
+    El registro muestra que <code>cleanWs()</code> borra el espacio de trabajo
+    <em>después</em> de archivar. El artefacto sobrevive porque
+    <code>archiveArtifacts</code> ya lo había transferido al controlador. Esto ilustra
+    directamente la separación entre el almacenamiento temporal del agente y la
+    persistencia en el controlador.
+  </p>
+</div>
+
+<h3><span class="estado e-verde"></span>Ejecución #4 — disparo automático</h3>
+
+<p>
+Con la directiva <code>triggers</code> en su lugar, la publicación de un cambio basta para
+lanzar una ejecución:
+</p>
+
+<div class="cw"><div class="cbar"><span class="lang">bash</span>
+<button class="cp" data-i="12">Copiar</button>
+<button class="cp clean" data-i="12">Solo comandos</button></div>
+<pre>printf '\n' &gt;&gt; README.md
+git add README.md
+git commit -m "Prueba del disparo automatico"
+git push</pre></div>
+
+<p>
+Transcurridos menos de dos minutos, Jenkins detecta el cambio y construye sin que nadie
+pulse ningún botón:
+</p>
+
+<div class="cw"><div class="cbar"><span class="lang">salida de consola</span></div>
+<pre><span class="ou"><span class="hl">Started by an SCM change</span></span>
+<span class="ou">Obtained Jenkinsfile from git https://github.com/Daniiell03/Taller-Jenkins.git</span>
+<span class="ou">...</span>
+<span class="ou">Finished: SUCCESS</span></pre></div>
+
+<div class="box nota">
+  <div class="bt">Nota — hasta dónde llega el ciclo</div>
+  <p>
+    Con el disparo automático, la integración continua queda completa: cambio, detección,
+    compilación, prueba y artefacto, sin intervención manual. La entrega continua llega
+    hasta el paquete verificado y disponible.
+  </p>
+  <p>
+    El paso siguiente —desplegar al dispositivo— no se automatiza aquí, y en el dominio
+    embebido rara vez se automatiza: no se detiene una máquina en producción para
+    actualizarla, y un corte durante la escritura puede inutilizar el equipo.
+  </p>
+</div>
+
+<!-- ============ PROBLEMAS ============ -->
+<h2 id="problemas">Problemas encontrados y su solución</h2>
+
+<p>
+Los siguientes fallos ocurrieron realmente durante la construcción de esta demostración.
+Se documentan porque es previsible que vuelvan a presentarse.
+</p>
+
+<div class="tw"><table>
+<tr><th style="width:250px">Síntoma</th><th style="width:270px">Causa</th><th>Solución</th></tr>
+<tr><td><code>bind source path does not exist: /usr/lib/wsl</code></td>
+    <td>BuildKit intenta montar una ruta inexistente al crear su contenedor de construcción; ocurre con Docker Engine en WSL2 sin Docker Desktop</td>
+    <td>Usar el constructor clásico: <code>DOCKER_BUILDKIT=0 docker build -t imagen:v1 .</code></td></tr>
+<tr><td><code>Password authentication is not supported</code></td>
+    <td>GitHub no acepta contraseñas para operaciones de Git</td>
+    <td>Generar un token de acceso personal y usarlo como contraseña</td></tr>
+<tr><td><code>Permission denied ... 403</code> con token válido</td>
+    <td>El token carece del alcance <code>repo</code>, o es <em>fine-grained</em> sin permiso de escritura</td>
+    <td>Regenerar el token marcando <code>repo</code>, o conceder <em>Contents: Read and write</em></td></tr>
+<tr><td><code>[rejected] main -&gt; main (fetch first)</code></td>
+    <td>El repositorio remoto contiene commits ausentes en local, típicamente el README creado al inicializar</td>
+    <td><code>git pull --rebase origin main</code> y volver a publicar</td></tr>
+<tr><td><code>Need to specify how to reconcile divergent branches</code></td>
+    <td>Se editaron archivos desde la interfaz web mientras se trabajaba en local</td>
+    <td><code>git config pull.rebase true</code> y volver a integrar</td></tr>
+<tr><td><code>stray '\' in program</code></td>
+    <td><code>printf</code> con comillas simples no interpreta secuencias de escape, de modo que quedan barras duplicadas</td>
+    <td>Corregir con <code>sed</code>, o preferir un editor de texto para archivos con macros</td></tr>
+<tr><td><code>missing separator</code> en <code>make</code></td>
+    <td>Las reglas del Makefile requieren tabuladores reales, no espacios</td>
+    <td><code>sed -i 's/^\t/\t/' Makefile</code>; verificar con <code>cat -A</code></td></tr>
+<tr><td><code>Selected Git installation does not exist</code></td>
+    <td>Jenkins no tiene registrada la ruta del ejecutable de Git</td>
+    <td><em>Administrar Jenkins</em> → <em>Tools</em> → <em>Git installations</em>, ruta <code>/usr/bin/git</code></td></tr>
+<tr><td>El disparador no lanza ninguna ejecución</td>
+    <td>Jenkins aún no ha leído la directiva <code>triggers</code></td>
+    <td>Ejecutar una construcción manual para que el disparador quede registrado</td></tr>
+<tr><td>El artefacto no aparece en la página de la ejecución</td>
+    <td>Los artefactos se listan en la página del <em>proyecto</em>, no en la de cada ejecución individual</td>
+    <td>Consultar <em>Last Successful Artifacts</em> en el proyecto</td></tr>
+</table></div>
+
+<!-- ============ DEMOSTRADO ============ -->
+<h2 id="demostrado">Qué queda demostrado</h2>
+
+<div class="box clave">
+  <div class="bt">1 · El entorno de construcción es infraestructura</div>
+  <p>
+    La imagen de Jenkins debe extenderse para incluir el compilador; de lo contrario el
+    pipeline no puede ejecutar <code>make</code>.
+  </p>
+</div>
+
+<div class="box clave">
+  <div class="bt">2 · El proceso de construcción se versiona como código</div>
+  <p>
+    El <code>Jenkinsfile</code> vive en el repositorio y cada cambio queda trazable,
+    revisable y reversible.
+  </p>
+</div>
+
+<div class="box clave">
+  <div class="bt">3 · El pipeline orquesta, no compila</div>
+  <p>
+    Toda la lógica reside en el <code>Makefile</code>, de modo que lo ejecutado en el
+    servidor se reproduce localmente sin Jenkins.
+  </p>
+</div>
+
+<div class="box clave">
+  <div class="bt">4 · No todo fallo es equivalente</div>
+  <p>
+    Un error de compilación y una prueba fallida tienen consecuencias distintas y se
+    distinguen visualmente.
+  </p>
+</div>
+
+<div class="box clave">
+  <div class="bt">5 · La política de calidad se aplica sin intervención humana</div>
+  <p>
+    Un cambio de un solo carácter, sintácticamente válido, impidió que se produjera un
+    artefacto entregable.
+  </p>
+</div>
+
+<div class="box clave">
+  <div class="bt">6 · El ciclo se cierra sin intervención humana</div>
+  <p>
+    El sondeo del repositorio convierte un <em>commit</em> en una construcción verificada,
+    sin que nadie pulse ningún botón.
+  </p>
+</div>
+
+<footer>
+  Documento elaborado a partir de la construcción y verificación completa de la
+  demostración. Todas las salidas reproducidas corresponden a ejecuciones reales.
+</footer>
+
+</main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const BLOCKS = [
+"#ifndef PUERTA_H\n#define PUERTA_H\n\n#include <stdint.h>\n\n#define MAX_INTENTOS 3u   /* bloqueo tras este numero de fallos */\n\ntypedef enum {\n    EST_CERRADO = 0,\n    EST_AUTORIZANDO,\n    EST_ABIERTO,\n    EST_BLOQUEADO\n} estado_t;\n\ntypedef enum {\n    EV_CREDENCIAL = 0,\n    EV_OK,\n    EV_FALLO,\n    EV_TIEMPO\n} evento_t;\n\ntypedef struct {\n    estado_t estado;\n    uint8_t  intentos;\n} puerta_t;\n\nvoid        puerta_init(puerta_t *p);\nestado_t    puerta_evento(puerta_t *p, evento_t ev);\nconst char *puerta_nombre(estado_t e);\n\n#endif /* PUERTA_H */",
+"#include \"puerta.h\"\n#include <stddef.h>\n\nvoid puerta_init(puerta_t *p)\n{\n    if (p == NULL) {\n        return;\n    }\n    p->estado   = EST_CERRADO;\n    p->intentos = 0u;\n}\n\nestado_t puerta_evento(puerta_t *p, evento_t ev)\n{\n    if (p == NULL) {\n        return EST_BLOQUEADO;   /* falla segura */\n    }\n\n    switch (p->estado) {\n\n    case EST_CERRADO:\n        if (ev == EV_CREDENCIAL) {\n            p->estado = EST_AUTORIZANDO;\n        }\n        break;\n\n    case EST_AUTORIZANDO:\n        if (ev == EV_OK) {\n            p->estado   = EST_ABIERTO;\n            p->intentos = 0u;\n        } else if (ev == EV_FALLO) {\n            p->intentos++;\n            p->estado = (p->intentos >= MAX_INTENTOS)\n                      ? EST_BLOQUEADO\n                      : EST_CERRADO;\n        }\n        break;\n\n    case EST_ABIERTO:\n        if (ev == EV_TIEMPO) {\n            p->estado = EST_CERRADO;\n        }\n        break;\n\n    case EST_BLOQUEADO:\n    default:\n        break;\n    }\n\n    return p->estado;\n}",
+"gcc -std=c11 -Wall -Wextra -Werror -Isrc -c src/puerta.c -o /tmp/p.o",
+"static void test_bloqueo_tras_tres_fallos(void)\n{\n    puerta_t p;\n    unsigned i;\n    puerta_init(&p);\n\n    /* Dos fallos: vuelve a CERRADO, aun sin bloquear. */\n    for (i = 0u; i < 2u; ++i) {\n        puerta_evento(&p, EV_CREDENCIAL);\n        MT_ASSERT_EQ(puerta_evento(&p, EV_FALLO), EST_CERRADO);\n    }\n\n    /* Tercer fallo: bloqueo. */\n    puerta_evento(&p, EV_CREDENCIAL);\n    MT_ASSERT_EQ(puerta_evento(&p, EV_FALLO), EST_BLOQUEADO);\n}",
+"make test",
+"APP      := control-acceso\nVERSION  ?= 0.1.0\nCC       ?= gcc\nCFLAGS   := -std=c11 -Wall -Wextra -Werror -O2 -Isrc \\\n            -DAPP_VERSION=\\\"$(VERSION)\\\"",
+"FROM jenkins/jenkins:lts-jdk21\n\nUSER root\nRUN apt-get update \\\n && apt-get install -y --no-install-recommends \\\n      build-essential make file cppcheck \\\n && rm -rf /var/lib/apt/lists/*\n\nENV JAVA_OPTS=\"-Duser.timezone=America/Costa_Rica\"\n\nCOPY plugins.txt /usr/share/jenkins/ref/plugins.txt\nRUN jenkins-plugin-cli --plugin-file /usr/share/jenkins/ref/plugins.txt\n\nUSER jenkins",
+"services:\n  jenkins:\n    build:\n      context: .\n      dockerfile: Dockerfile\n    image: jenkins-taller:v1\n    container_name: jenkins-taller\n    restart: unless-stopped\n    ports:\n      - \"8080:8080\"\n      - \"50000:50000\"\n    volumes:\n      - jenkins_home:/var/jenkins_home\n\nvolumes:\n  jenkins_home:",
+"cd demostracion/docker\nDOCKER_BUILDKIT=0 docker build -t jenkins-taller:v1 .\ndocker compose up -d --no-build\ndocker compose ps",
+"docker exec jenkins-taller bash -c \\\n  \"gcc --version | head -1; make --version | head -1\"",
+"docker exec jenkins-taller \\\n    cat /var/jenkins_home/secrets/initialAdminPassword",
+"pipeline {\n    agent any\n\n    options {\n        timestamps()\n        timeout(time: 10, unit: \"MINUTES\")\n        buildDiscarder(logRotator(numToKeepStr: \"10\"))\n        disableConcurrentBuilds()\n    }\n\n    triggers {\n        pollSCM(\"H/2 * * * *\")\n    }\n\n    environment {\n        VERSION = \"0.1.${BUILD_NUMBER}\"\n    }\n\n    stages {\n\n        stage(\"Preparar\") {\n            steps {\n                echo \"Construyendo version ${VERSION}\"\n                sh \"make clean\"\n                sh \"gcc --version | head -1\"\n            }\n        }\n\n        stage(\"Compilar\") {\n            steps {\n                sh \"make all VERSION=${VERSION}\"\n            }\n        }\n\n        stage(\"Probar\") {\n            steps {\n                catchError(buildResult: \"UNSTABLE\",\n                           stageResult: \"UNSTABLE\") {\n                    sh \"make test VERSION=${VERSION}\"\n                }\n            }\n            post {\n                always {\n                    junit allowEmptyResults: true,\n                          testResults: \"build/reports/*.xml\"\n                }\n            }\n        }\n\n        stage(\"Empaquetar\") {\n            when {\n                expression { currentBuild.result == null ||\n                             currentBuild.result == \"SUCCESS\" }\n            }\n            steps {\n                sh \"make package VERSION=${VERSION}\"\n            }\n        }\n\n        stage(\"Entregar\") {\n            when {\n                expression { currentBuild.result == null ||\n                             currentBuild.result == \"SUCCESS\" }\n            }\n            steps {\n                archiveArtifacts artifacts: \"build/dist/*.tar.gz\",\n                                 fingerprint: true\n            }\n        }\n    }\n\n    post {\n        success  { echo \"SUCCESS: artefacto ${VERSION} listo\" }\n        unstable { echo \"UNSTABLE: compilo, pero fallaron pruebas\" }\n        failure  { echo \"FAILURE: revise la consola\" }\n        always   { cleanWs() }\n    }\n}",
+"printf '\\n' >> README.md\ngit add README.md\ngit commit -m \"Prueba del disparo automatico\"\ngit push"
+];
+
+function soloComandos(raw){
+  return raw.split('\n')
+    .map(l=>{
+      const i = l.indexOf('#');
+      if(i === 0) return '';
+      if(i > 0 && !l.slice(0,i).includes('"')) return l.slice(0,i).trimEnd();
+      return l;
+    })
+    .filter(l=>{
+      const s = l.trim();
+      if(s === '') return false;
+      if(s.startsWith('>')) return false;
+      return true;
+    })
+    .join('\n');
+}
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('on');
+  clearTimeout(t._h);
+  t._h = setTimeout(()=>t.classList.remove('on'), 1500);
+}
+
+function copiar(txt, btn, msg){
+  const listo = ()=>{
+    btn.classList.add('ok');
+    const o = btn.textContent; btn.textContent = 'Copiado';
+    setTimeout(()=>{btn.classList.remove('ok'); btn.textContent = o;}, 1300);
+    toast(msg);
+  };
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(txt).then(listo).catch(()=>respaldo(txt, listo));
+  } else { respaldo(txt, listo); }
+}
+
+function respaldo(txt, listo){
+  const ta = document.createElement('textarea');
+  ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); listo(); }
+  catch(e){ toast('No se pudo copiar'); }
+  document.body.removeChild(ta);
+}
+
+document.addEventListener('click', e=>{
+  const b = e.target.closest('.cp');
+  if(!b) return;
+  const raw = BLOCKS[+b.dataset.i];
+  if(raw === undefined){ toast('Bloque no disponible'); return; }
+  if(b.classList.contains('clean')) copiar(soloComandos(raw), b, 'Comandos copiados');
+  else copiar(raw, b, 'Bloque copiado');
+});
+
+const enlaces = [...document.querySelectorAll('nav a')];
+const mapa = new Map(enlaces.map(a=>[a.getAttribute('href').slice(1), a]));
+const obs = new IntersectionObserver(es=>{
+  es.forEach(en=>{
+    if(en.isIntersecting){
+      enlaces.forEach(a=>a.classList.remove('active'));
+      const a = mapa.get(en.target.id);
+      if(a) a.classList.add('active');
+    }
+  });
+}, {rootMargin:'0px 0px -72% 0px'});
+document.querySelectorAll('[id]').forEach(h=>{ if(mapa.has(h.id)) obs.observe(h); });
+
+const bt = document.getElementById('theme');
+try {
+  const g = localStorage.getItem('demo-tema');
+  if(g) document.documentElement.setAttribute('data-theme', g);
+} catch(e){}
+bt.addEventListener('click', ()=>{
+  const act = document.documentElement.getAttribute('data-theme');
+  const oscuro = act ? act === 'dark'
+    : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const nuevo = oscuro ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', nuevo);
+  try { localStorage.setItem('demo-tema', nuevo); } catch(e){}
+});
+</script>
+
+</body>
+</html>
