@@ -53,5 +53,6 @@ El objetivo es que se logre completar el Jenkinsfile y las configuraciones neces
 
 ## Recursos Adicionales
 Puedes encontrar material de apoyo, diagramas de arquitectura y guías paso a paso dentro del directorio `docs/`.
+Link para preguntas iniciales: https://wordwall.net/resource/119393396?wwmethod=link
 
 *Repositorio creado para fines educativos.*
