@@ -267,6 +267,7 @@ git --version
 gcc --version | head -1
 make --version | head -1
 nano --version | head -1
+cppcheck --version        <span class="cm"># se usa en el paso 9</span>
 df -h $HOME               <span class="cm"># al menos 3 GB libres</span>
 ss -tlnp | grep 8080      <span class="cm"># no debe devolver nada</span></pre></div>
 
@@ -279,7 +280,7 @@ ss -tlnp | grep 8080      <span class="cm"># no debe devolver nada</span></pre><
 <button class="cp" data-i="1">Copiar</button>
 <button class="cp clean" data-i="1">Solo comandos</button></div>
 <pre>sudo apt update
-sudo apt install -y build-essential make git curl zip unzip nano</pre></div>
+sudo apt install -y build-essential make git curl zip unzip nano cppcheck</pre></div>
 
 <p>Docker Engine con Compose v2, desde el repositorio oficial:</p>
 
@@ -827,6 +828,23 @@ static void test_checksum_rechaza_invalida(void)
     MT_PRUEBA(test_checksum_suma_pequena);
     MT_PRUEBA(test_checksum_rechaza_invalida);</pre></div>
 
+<div class="box adv">
+  <div class="bt">Advertencia — si olvida un <code>MT_PRUEBA</code></div>
+  <p>
+    Cada función de prueba que escriba debe registrarse dentro de <code>main()</code>.
+    Si falta alguna, el compilador no dice «falta registrar la prueba»: dice
+    <code>defined but not used</code> y, como el proyecto usa <code>-Werror</code>,
+    <strong>el build queda rojo</strong> en lugar de amarillo.
+  </p>
+  <p>Antes de publicar, cuente que los números coincidan:</p>
+</div>
+
+<div class="cw"><div class="cbar"><span class="lang">bash</span>
+<button class="cp" data-i="41">Copiar</button>
+<button class="cp clean" data-i="41">Solo comandos</button></div>
+<pre>grep -c "^static void test_" tests/test_credencial.c   <span class="cm"># funciones escritas</span>
+grep -c "MT_PRUEBA" tests/test_credencial.c            <span class="cm"># registros: debe dar igual</span></pre></div>
+
 <div class="cw"><div class="cbar"><span class="lang">bash · integrante B</span>
 <button class="cp" data-i="22">Copiar</button>
 <button class="cp clean" data-i="22">Solo comandos</button></div>
@@ -969,14 +987,36 @@ segundo, GitHub muestra <em>This branch has conflicts that must be resolved</em>
   <li><strong>Mark as resolved</strong> → <strong>Commit merge</strong>.</li>
 </ol>
 
-<p>Después dejen el valor en <code>8u</code> para el resto del taller:</p>
+<div class="box adv">
+  <div class="bt">Advertencia — este paso es obligatorio</div>
+  <p>
+    Si el conflicto se resolvió dejando 10 o 6, <strong>todo lo que viene después va a
+    fallar</strong>: las pruebas de checksum dejan de cuadrar y parecerá que la
+    implementación está mal, cuando el problema es la constante.
+  </p>
+  <p>Restauren el valor a <code>8u</code> y publíquenlo antes de seguir.</p>
+</div>
 
-<div class="cw"><div class="cbar"><span class="lang">bash · ambos</span>
+<div class="cw"><div class="cbar"><span class="lang">bash · uno de los dos</span>
 <button class="cp" data-i="26">Copiar</button>
 <button class="cp clean" data-i="26">Solo comandos</button></div>
 <pre>cd ~/validador-ci
 git checkout main &amp;&amp; git pull
-grep CRED_LONGITUD src/credencial.h    <span class="cm"># debe decir 8u</span>
+grep CRED_LONGITUD src/credencial.h    <span class="cm"># vea en cuanto quedo</span>
+sed -i 's/#define CRED_LONGITUD.*$/#define CRED_LONGITUD   8u/' src/credencial.h
+grep CRED_LONGITUD src/credencial.h    <span class="cm"># ahora debe decir 8u</span>
+make clean &amp;&amp; make test                <span class="cm"># las 8 pruebas deben pasar</span>
+git commit -am "Restaura la longitud del UID a 8 digitos"
+git push</pre></div>
+
+<p>El otro integrante actualiza su copia:</p>
+
+<div class="cw"><div class="cbar"><span class="lang">bash · el otro</span>
+<button class="cp" data-i="42">Copiar</button>
+<button class="cp clean" data-i="42">Solo comandos</button></div>
+<pre>cd ~/validador-ci
+git checkout main &amp;&amp; git pull
+grep CRED_LONGITUD src/credencial.h
 make clean &amp;&amp; make test</pre></div>
 
 <div class="box nota">
@@ -1429,6 +1469,10 @@ La imagen oficial trae Java y el servidor, pero no el compilador. Sin este
 <tr><td>No encuentro el artefacto</td><td>Está en la página del <em>proyecto</em>, bajo <em>Last Successful Artifacts</em>, no en la de cada ejecución</td></tr>
 <tr><td><code>Lightweight checkout support not available</code></td><td>Es un aviso, no un error. Jenkins clona dos veces cuando el especificador usa comodines</td></tr>
 <tr><td><code>missing separator</code> al ejecutar <code>make</code></td><td>Editó el <code>Makefile</code> y reemplazó un tabulador por espacios. Verifique con <code>cat -A Makefile</code></td></tr>
+<tr><td><code>defined but not used</code> en varias funciones de prueba</td><td>Olvidó registrarlas con <code>MT_PRUEBA</code> dentro de <code>main()</code>. Compare <code>grep -c "^static void test_"</code> con <code>grep -c "MT_PRUEBA"</code></td></tr>
+<tr><td><code>cppcheck: could not find or open any of the paths given</code></td><td>Una continuación de línea del <code>Makefile</code> quedó con doble barra. Verifique con <code>cat -A Makefile | grep -A1 cppcheck</code>: debe terminar en <code>\$</code>, no en <code>\\$</code></td></tr>
+<tr><td><code>make: cppcheck: No such file or directory</code></td><td>Falta instalarlo en el anfitrión: <code>sudo apt install -y cppcheck</code></td></tr>
+<tr><td>Las pruebas de checksum fallan sin razón aparente</td><td>Revise <code>CRED_LONGITUD</code> en <code>src/credencial.h</code>: si quedó en 10 o 6 tras el paso 7, restáurelo a <code>8u</code></td></tr>
 <tr><td><code>implicit declaration of function 'strlen'</code></td><td>Falta <code>#include &lt;string.h&gt;</code> al inicio de <code>credencial.c</code></td></tr>
 <tr><td>El puerto 8080 está ocupado</td><td><code>docker ps</code> para ver qué lo usa, y <code>docker stop NOMBRE</code></td></tr>
 <tr><td>Perdí la clave inicial de Jenkins</td><td><code>docker exec jenkins-validador cat /var/jenkins_home/secrets/initialAdminPassword</code></td></tr>
@@ -1448,8 +1492,8 @@ La imagen oficial trae Java y el servidor, pero no el compilador. Sin este
 
 <script>
 const BLOCKS = [
-"lsb_release -d            # distribucion\ndocker --version          # 24 o superior\ndocker compose version    # debe decir v2.x\ngit --version\ngcc --version | head -1\nmake --version | head -1\nnano --version | head -1\ndf -h $HOME               # al menos 3 GB libres\nss -tlnp | grep 8080      # no debe devolver nada",
-"sudo apt update\nsudo apt install -y build-essential make git curl zip unzip nano",
+"lsb_release -d            # distribucion\ndocker --version          # 24 o superior\ndocker compose version    # debe decir v2.x\ngit --version\ngcc --version | head -1\nmake --version | head -1\nnano --version | head -1\ncppcheck --version        # se usa en el paso 9\ndf -h $HOME               # al menos 3 GB libres\nss -tlnp | grep 8080      # no debe devolver nada",
+"sudo apt update\nsudo apt install -y build-essential make git curl zip unzip nano cppcheck",
 "sudo apt install -y ca-certificates curl gnupg\nsudo install -m 0755 -d /etc/apt/keyrings\ncurl -fsSL https://download.docker.com/linux/ubuntu/gpg \\\n  | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg\nsudo chmod a+r /etc/apt/keyrings/docker.gpg\n\necho \"deb [arch=$(dpkg --print-architecture) \\\nsigned-by=/etc/apt/keyrings/docker.gpg] \\\nhttps://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable\" \\\n  | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null\n\nsudo apt update\nsudo apt install -y docker-ce docker-ce-cli containerd.io \\\n                    docker-buildx-plugin docker-compose-plugin",
 "sudo usermod -aG docker $USER\nnewgrp docker\ndocker run --rm hello-world    # debe imprimir un saludo",
 "cat ARCHIVO           # muestra el contenido completo\nless ARCHIVO          # lo muestra pagina por pagina; salga con q\nls -R                 # lista carpetas y subcarpetas\ngrep -n \"TEXTO\" ARCHIVO   # busca y muestra el numero de linea",
@@ -1474,7 +1518,7 @@ const BLOCKS = [
 "cd ~/validador-ci\ngit checkout main\ngit pull\nmake clean && make test",
 "cd ~/validador-ci\ngit checkout main && git pull\ngit checkout -b uid-largo\nsed -i 's/#define CRED_LONGITUD   8u/#define CRED_LONGITUD  10u/' src/credencial.h\ngrep CRED_LONGITUD src/credencial.h\ngit commit -am \"Amplia el UID a 10 digitos\"\ngit push -u origin uid-largo",
 "cd ~/validador-ci\ngit checkout main && git pull\ngit checkout -b uid-corto\nsed -i 's/#define CRED_LONGITUD   8u/#define CRED_LONGITUD   6u/' src/credencial.h\ngrep CRED_LONGITUD src/credencial.h\ngit commit -am \"Reduce el UID a 6 digitos\"\ngit push -u origin uid-corto",
-"cd ~/validador-ci\ngit checkout main && git pull\ngrep CRED_LONGITUD src/credencial.h\nmake clean && make test",
+"cd ~/validador-ci\ngit checkout main && git pull\ngrep CRED_LONGITUD src/credencial.h\nsed -i 's/#define CRED_LONGITUD.*$/#define CRED_LONGITUD   8u/' src/credencial.h\ngrep CRED_LONGITUD src/credencial.h\nmake clean && make test\ngit commit -am \"Restaura la longitud del UID a 8 digitos\"\ngit push",
 "cd ~/validador-ci\ngit checkout main && git pull\ngit checkout -b implementacion-autorizar\nnano src/credencial.c",
 "cred_resultado_t cred_autorizar(const char *uid,\n                                const char *permitidas[],\n                                size_t n)\n{\n    size_t i;\n    int digito;\n\n    /* 1. formato */\n    if (!cred_formato_valido(uid)) {\n        return CRED_ERR_FORMATO;\n    }\n\n    /* 2. checksum: el ultimo digito debe coincidir */\n    digito = cred_checksum(uid);\n    if (digito < 0 || uid[CRED_LONGITUD - 1u] - '0' != digito) {\n        return CRED_ERR_CHECKSUM;\n    }\n\n    /* 3. lista de permitidas */\n    if (permitidas == NULL) {\n        return CRED_ERR_NO_AUTORIZADA;\n    }\n    for (i = 0u; i < n; ++i) {\n        if (permitidas[i] != NULL && strcmp(uid, permitidas[i]) == 0) {\n            return CRED_OK;\n        }\n    }\n    return CRED_ERR_NO_AUTORIZADA;\n}",
 "make clean && make all\n./build/bin/validador-credenciales\nmake test\ngit add src/credencial.c\ngit commit -m \"Implementa la autorizacion de credenciales\"\ngit push -u origin implementacion-autorizar",
@@ -1488,7 +1532,9 @@ const BLOCKS = [
 "cd ~/validador-ci\ngit checkout main && git pull\ngit checkout -b experimento-roto\nsed -i 's/return suma % 10;/return suma % 9;/' src/credencial.c\ngrep -n \"suma %\" src/credencial.c\nmake clean && make test\ngit commit -am \"Experimento: cambia el modulo del checksum\"\ngit push -u origin experimento-roto",
 "git checkout main\ngit push origin --delete experimento-roto\ngit branch -D experimento-roto\ngit branch -a",
 "cd ~/validador-ci\ncat docker/Dockerfile           # entorno de construccion\ncat docker/docker-compose.yml   # servicio y volumen persistente\ncat docker/plugins.txt          # complementos precargados\ncat Makefile                    # objetivos de construccion\ncat Jenkinsfile                 # definicion del pipeline",
-"FROM jenkins/jenkins:lts-jdk21\n\nUSER root\n\nRUN apt-get update \\\n && apt-get install -y --no-install-recommends \\\n      build-essential \\\n      make \\\n      file \\\n      git \\\n      cppcheck \\\n && rm -rf /var/lib/apt/lists/*\n\nENV JAVA_OPTS=\"-Duser.timezone=America/Costa_Rica\"\n\nCOPY plugins.txt /usr/share/jenkins/ref/plugins.txt\nRUN jenkins-plugin-cli --plugin-file /usr/share/jenkins/ref/plugins.txt\n\nUSER jenkins"
+"FROM jenkins/jenkins:lts-jdk21\n\nUSER root\n\nRUN apt-get update \\\n && apt-get install -y --no-install-recommends \\\n      build-essential \\\n      make \\\n      file \\\n      git \\\n      cppcheck \\\n && rm -rf /var/lib/apt/lists/*\n\nENV JAVA_OPTS=\"-Duser.timezone=America/Costa_Rica\"\n\nCOPY plugins.txt /usr/share/jenkins/ref/plugins.txt\nRUN jenkins-plugin-cli --plugin-file /usr/share/jenkins/ref/plugins.txt\n\nUSER jenkins",
+"grep -c \"^static void test_\" tests/test_credencial.c   # funciones escritas\ngrep -c \"MT_PRUEBA\" tests/test_credencial.c            # registros: debe dar igual",
+"cd ~/validador-ci\ngit checkout main && git pull\ngrep CRED_LONGITUD src/credencial.h\nmake clean && make test"
 ];
 
 function soloComandos(raw){
