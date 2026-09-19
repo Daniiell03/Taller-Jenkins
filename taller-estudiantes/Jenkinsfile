@@ -50,7 +50,7 @@ pipeline {
         stage("Empaquetar") {
             when {
                 allOf {
-                    branch "main"
+                    expression { (env.BRANCH_NAME ?: env.GIT_BRANCH) ==~ /(origin\/)?main/ }
                     expression { currentBuild.result == null ||
                                  currentBuild.result == "SUCCESS" }
                 }
@@ -63,7 +63,7 @@ pipeline {
         stage("Entregar") {
             when {
                 allOf {
-                    branch "main"
+                    expression { (env.BRANCH_NAME ?: env.GIT_BRANCH) ==~ /(origin\/)?main/ }
                     expression { currentBuild.result == null ||
                                  currentBuild.result == "SUCCESS" }
                 }
