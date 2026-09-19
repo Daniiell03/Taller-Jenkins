@@ -1,3 +1,5 @@
+name: demostracion-jenkins
+
 # docker-compose.yml - Un controlador de Jenkins por participante.
 #
 # jenkins_home se persiste en un volumen NOMBRADO, no en un bind mount:
