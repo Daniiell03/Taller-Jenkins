@@ -9,16 +9,16 @@ int main(void)
 {
     static const char *permitidas[] = {
         "12345678",
-        "20250011",
-        "99887761"
+        "20250010",
+        "99887764"
     };
     static const char *ensayos[] = {
         "12345678",
-        "20250011",
+        "20250010",
         "1234567",
         "1234567A",
         "12345670",
-        "99887761",
+        "99887764",
         "11111115"
     };
     const size_t n_perm = sizeof(permitidas) / sizeof(permitidas[0]);
