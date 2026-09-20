@@ -10,7 +10,7 @@
 
 #include <stdint.h>
 
-#define MAX_INTENTOS 3u   /* bloqueo tras este numero de fallos */
+#define MAX_INTENTOS 2u   /* bloqueo tras este numero de fallos */
 
 typedef enum {
     EST_CERRADO = 0,
